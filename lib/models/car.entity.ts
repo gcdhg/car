@@ -2,16 +2,8 @@ import {
     Model,
     Column,
     Table,
-    BelongsTo,
-    BelongsToMany,
-    Scopes,
-    CreatedAt,
-    UpdatedAt,
     PrimaryKey,
     AutoIncrement,
-    ForeignKey,
-    HasMany,
-    HasOne,
 } from "sequelize-typescript";
 
 @Table({

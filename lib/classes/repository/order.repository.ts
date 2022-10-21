@@ -5,10 +5,9 @@ import * as sequelize from "sequelize";
 import CarModel from "../../models/car.entity";
 import OrderModel from "../../models/order.entity";
 import ClientModel from "../../models/client.entity";
-import { Order } from "sequelize";
 
 export default class OrdersRepository {
-    static async getTotal({ start, end }: { start: string; end: string }) {
+    static async getTotal({ start, end }: { start: string; end: string }): Promise<number> {
         if (!start) return 0;
 
         if (!end) {
@@ -22,7 +21,9 @@ export default class OrdersRepository {
             { type: sequelize.QueryTypes.SELECT }
         );
 
-        return total;
+        const [data] = <[{ total: string }]>total;
+
+        return parseInt(data?.total) || 0;
     }
 
     static async getHistory() {
@@ -48,5 +49,82 @@ export default class OrdersRepository {
         const orders = await OrderModel.sequelize.query(query, { type: sequelize.QueryTypes.SELECT });
 
         return orders;
+    }
+
+    static async seedData() {
+        await OrderModel.destroy({ where: { id: { [sequelize.Op.not]: null } } });
+        await Promise.all([
+            CarModel.destroy({ where: { id: { [sequelize.Op.not]: null } } }),
+            ClientModel.destroy({ where: { id: { [sequelize.Op.not]: null } } }),
+        ]);
+
+        const dataCar = [
+            ["BMW X5", 2_000_000],
+            ["BMW X6", 3_000_000],
+            ["BMW X7", 2_000_000],
+        ];
+
+        const dataClient = [
+            ["Иванов Сергей", "+79107891122"],
+            ["Коробкин Олег", "+79107891155"],
+            ["Олейкин Роман", "+79107891166"],
+        ];
+
+        await CarModel.bulkCreate(dataCar.map((el) => <CarModel>{ name: el[0], price: el[1] }));
+        await ClientModel.bulkCreate(dataClient.map((el) => <any>{ name: el[0], phone: el[1] }));
+
+        const cars = await CarModel.findAll();
+        const clients = await ClientModel.findAll();
+
+        const dataOrder = [
+            [
+                moment.utc("2022-07-01").startOf("D").format(),
+                cars.find((el) => el.name === "BMW X5")?.id,
+                clients.find((el) => el.name === "Иванов Сергей")?.id,
+                1,
+                2_000_000,
+            ],
+            [
+                moment.utc("2022-07-02").startOf("D").format(),
+                cars.find((el) => el.name === "BMW X6")?.id,
+                clients.find((el) => el.name === "Коробкин Олег")?.id,
+                2,
+                3_500_000,
+            ],
+            [
+                moment.utc("2022-07-02").startOf("D").format(),
+                cars.find((el) => el.name === "BMW X7")?.id,
+                clients.find((el) => el.name === "Олейкин Роман")?.id,
+                1,
+                2_000_000,
+            ],
+            [
+                moment.utc("2022-07-02").startOf("D").format(),
+                cars.find((el) => el.name === "BMW X7")?.id,
+                clients.find((el) => el.name === "Коробкин Олег")?.id,
+                1,
+                2_000_000,
+            ],
+            [
+                moment.utc("2022-07-02").startOf("D").format(),
+                cars.find((el) => el.name === "BMW X5")?.id,
+                clients.find((el) => el.name === "Коробкин Олег")?.id,
+                1,
+                2_000_000,
+            ],
+            [
+                moment.utc("2022-07-03").startOf("D").format(),
+                cars.find((el) => el.name === "BMW X6")?.id,
+                clients.find((el) => el.name === "Иванов Сергей")?.id,
+                1,
+                3_000_000,
+            ],
+        ];
+
+        OrderModel.bulkCreate(
+            dataOrder.map(
+                (el) => <OrderModel>{ date: moment(el[0]).toDate(), car_id: el[1], client_id: el[2], amount: el[3], price: el[4] }
+            )
+        );
     }
 }
